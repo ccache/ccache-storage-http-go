@@ -1,0 +1,8 @@
+name: Build
+
+on: [push]
+jobs:
+  noop:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "Actions enabled"
