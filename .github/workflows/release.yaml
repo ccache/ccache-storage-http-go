@@ -58,8 +58,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create ${{ steps.get_version.outputs.VERSION }} \
+        gh release create "v${{ steps.get_version.outputs.VERSION }}" \
           --draft \
-          --title "${{ steps.get_version.outputs.VERSION }}" \
+          --title "v${{ steps.get_version.outputs.VERSION }}" \
           --generate-notes \
           dist/*
