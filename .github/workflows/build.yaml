@@ -1,8 +1,26 @@
 name: Build
 
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
-  noop:
-    runs-on: ubuntu-24.04
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - run: echo "Actions enabled"
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: Build all platforms
+      run: make build-all
+
+    - name: Check formatting
+      run: |
+        test -z "$(gofmt -l .)"

@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Build all platforms
+      run: make build-all
+
+    - name: Install go-licenses
+      run: go install github.com/google/go-licenses@v1.6.0
+
+    - name: Create release archives
+      run: |
+        mkdir -p dist
+
+        # POSIX
+        for arch in {linux,darwin}-{amd64,arm64}; do
+          GOOS=${arch%-*} make licenses
+          tar -caf dist/ccache-storage-http-${{ steps.get_version.outputs.VERSION }}-${arch}.tar.gz \
+              --transform="s/ccache-storage-http-${arch}/ccache-storage-http/" \
+              ccache-storage-http-${arch} LICENSE README.md THIRD_PARTY_LICENSES.txt
+        done
+
+        # Windows
+        for arch in windows-{amd64,arm64}; do
+          GOOS=windows make licenses
+          mkdir -p dist/tmp-${arch}
+          cp ccache-storage-http-${arch}.exe dist/tmp-${arch}/ccache-storage-http.exe
+          cp LICENSE README.md THIRD_PARTY_LICENSES.txt dist/tmp-${arch}
+          cd dist/tmp-${arch}
+          zip ../ccache-storage-http-${{ steps.get_version.outputs.VERSION }}-${arch}.zip *
+          cd ../..
+          rm -r dist/tmp-${arch}
+        done
+
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create ${{ steps.get_version.outputs.VERSION }} \
+          --draft \
+          --title "${{ steps.get_version.outputs.VERSION }}" \
+          --generate-notes \
+          dist/*
