@@ -16,12 +16,12 @@ This project aims to:
    free to use it as a starting point for implementing helpers for other storage
    service protocols.
 
-See also the similar [ccache-remote-http-cpp] project for an example (and
+See also the similar [ccache-storage-http-cpp] project for an example (and
 production ready) **C++** implementation.
 
 [ccache]: https://ccache.dev
 [ccache remote storage helper protocol]: https://github.com/jrosdahl/ccache/blob/crsh/doc/remote_storage_helper_spec.md
-[ccache-remote-http-cpp]: https://github.com/ccache/ccache-storage-http-cpp
+[ccache-storage-http-cpp]: https://github.com/ccache/ccache-storage-http-cpp
 
 ## Features
 
