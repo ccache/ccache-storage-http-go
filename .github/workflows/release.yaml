@@ -60,6 +60,6 @@ jobs:
       run: |
         gh release create "v${{ steps.get_version.outputs.VERSION }}" \
           --draft \
-          --title "v${{ steps.get_version.outputs.VERSION }}" \
+          --title "${{ steps.get_version.outputs.VERSION }}" \
           --generate-notes \
           dist/*
