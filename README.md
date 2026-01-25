@@ -20,7 +20,7 @@ See also the similar [ccache-storage-http-cpp] project for an example (and
 production ready) **C++** implementation.
 
 [ccache]: https://ccache.dev
-[ccache remote storage helper protocol]: https://github.com/jrosdahl/ccache/blob/crsh/doc/remote_storage_helper_spec.md
+[ccache remote storage helper protocol]: https://github.com/ccache/ccache/blob/master/doc/remote_storage_helper_spec.md
 [ccache-storage-http-cpp]: https://github.com/ccache/ccache-storage-http-cpp
 
 ## Features
@@ -40,7 +40,7 @@ The helper should be installed in a [location where ccache searches for helper
 programs]. Install it as the name `ccache-storage-http` for HTTP support and/or
 `ccache-storage-https` for HTTPS support.
 
-[location where ccache searches for helper programs]: https://github.com/jrosdahl/ccache/blob/crsh/doc/manual.adoc#storage-helper-process
+[location where ccache searches for helper programs]: https://github.com/ccache/ccache/blob/master/doc/manual.adoc#storage-helper-process
 
 ### Using a prebuilt binary
 
@@ -85,7 +85,7 @@ export CCACHE_REMOTE_STORAGE="https://cache.example.com"
 ccache -o remote_storage="https://cache.example.com"
 ```
 
-[`remote_storage` configuration]: https://github.com/jrosdahl/ccache/blob/crsh/doc/manual.adoc#remote-storage-backends
+[`remote_storage` configuration]: https://github.com/ccache/ccache/blob/master/doc/manual.adoc#remote-storage-backends
 
 See also the [HTTP storage wiki page] for tips on how to set up a storage server.
 
