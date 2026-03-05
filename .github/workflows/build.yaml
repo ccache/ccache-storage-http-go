@@ -22,3 +22,19 @@ jobs:
     - name: Check formatting
       run: |
         test -z "$(gofmt -l .)"
+
+  build-minimum:
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go (minimum version)
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build all platforms
+      run: make build-all
