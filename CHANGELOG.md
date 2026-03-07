@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Improve generation of release notes.
+
 ## [0.3] - 2026-03-07
 
 ### Changed
