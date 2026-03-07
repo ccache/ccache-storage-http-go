@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3] - 2026-03-07
+
+### Changed
+
+- Add `-go` suffix to release archive names to distinguish the project from the
+  ccache-storage-http-cpp project.
+- Move files inside release archives to a subdirectory named after the archive.
+
 ## [0.2] - 2026-03-05
 
 ### Changed
