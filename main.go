@@ -12,7 +12,7 @@ const helpText = `This is a ccache HTTP(S) storage helper, usually started autom
 when needed. More information here: https://ccache.dev/storage-helpers.html
 
 Project: https://github.com/ccache/ccache-storage-http-go
-Version: 0.2
+Version: 0.3
 `
 
 func main() {
