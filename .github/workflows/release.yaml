@@ -32,27 +32,32 @@ jobs:
 
     - name: Create release archives
       run: |
-        mkdir -p dist
+        mkdir -p dist/tmp
 
         # POSIX
         for arch in {linux,darwin}-{amd64,arm64}; do
           GOOS=${arch%-*} make licenses
-          tar -caf dist/ccache-storage-http-${{ steps.get_version.outputs.VERSION }}-${arch}.tar.gz \
-              --transform="s/ccache-storage-http-${arch}/ccache-storage-http/" \
-              ccache-storage-http-${arch} LICENSE README.md THIRD_PARTY_LICENSES.txt
+          ARCHIVE_NAME="ccache-storage-http-go-${{ steps.get_version.outputs.VERSION }}-${arch}"
+          mkdir -p dist/tmp/${ARCHIVE_NAME}
+          cp ccache-storage-http-${arch} dist/tmp/${ARCHIVE_NAME}/ccache-storage-http
+          cp LICENSE README.md THIRD_PARTY_LICENSES.txt dist/tmp/${ARCHIVE_NAME}/
+          tar -caf dist/${ARCHIVE_NAME}.tar.gz -C dist/tmp ${ARCHIVE_NAME}
+          rm -r dist/tmp/${ARCHIVE_NAME}
         done
 
         # Windows
         for arch in windows-{amd64,arm64}; do
           GOOS=windows make licenses
-          mkdir -p dist/tmp-${arch}
-          cp ccache-storage-http-${arch}.exe dist/tmp-${arch}/ccache-storage-http.exe
-          cp LICENSE README.md THIRD_PARTY_LICENSES.txt dist/tmp-${arch}
-          cd dist/tmp-${arch}
-          zip ../ccache-storage-http-${{ steps.get_version.outputs.VERSION }}-${arch}.zip *
+          ARCHIVE_NAME="ccache-storage-http-go-${{ steps.get_version.outputs.VERSION }}-${arch}"
+          mkdir -p dist/tmp/${ARCHIVE_NAME}
+          cp ccache-storage-http-${arch}.exe dist/tmp/${ARCHIVE_NAME}/ccache-storage-http.exe
+          cp LICENSE README.md THIRD_PARTY_LICENSES.txt dist/tmp/${ARCHIVE_NAME}/
+          cd dist/tmp
+          zip -r ../${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}
           cd ../..
-          rm -r dist/tmp-${arch}
+          rm -r dist/tmp/${ARCHIVE_NAME}
         done
+        rmdir dist/tmp
 
     - name: Create release
       env:
