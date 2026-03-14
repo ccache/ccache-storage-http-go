@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Set `User-Agent` header to `ccache-storage-http-go/$VERSION` in HTTP requests.
 - Improve generation of release notes.
 
 ## [0.3] - 2026-03-07

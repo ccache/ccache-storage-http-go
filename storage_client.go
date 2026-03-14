@@ -220,6 +220,8 @@ func (s *storageClient) exists(urlStr string) (bool, error) {
 }
 
 func (s *storageClient) addHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", "ccache-storage-http-go/"+version)
+
 	if s.bearerToken != "" {
 		req.Header.Set("Authorization", "Bearer "+s.bearerToken)
 	}
