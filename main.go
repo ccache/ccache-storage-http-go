@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const version = "0.3"
+const version = "0.4"
 
 const helpText = `This is a ccache HTTP(S) storage helper, usually started automatically by ccache
 when needed. More information here: https://ccache.dev/storage-helpers.html
