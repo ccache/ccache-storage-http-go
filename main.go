@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 )
 
 const version = "0.4"
@@ -41,6 +42,14 @@ func main() {
 	if err != nil {
 		logger.logf("Failed to create server: %v", err)
 		os.Exit(1)
+	}
+
+	rootDir := "/"
+	if runtime.GOOS == "windows" {
+		rootDir = `C:\`
+	}
+	if err := os.Chdir(rootDir); err != nil {
+		logger.logf("Warning: failed to chdir to root: %v", err)
 	}
 
 	if err := server.run(); err != nil {

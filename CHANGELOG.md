@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Change working directory to `/` (or `C:\` on Windows) to avoid blocking
+  removal of the directory the server wast started from.
+
 ## [0.4] - 2026-03-15
 
 ### Changed
