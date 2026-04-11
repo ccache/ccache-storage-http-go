@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Prebuilt linux-riscv64 binary release.
+
 ## [0.5] - 2026-03-18
 
 ### Changed

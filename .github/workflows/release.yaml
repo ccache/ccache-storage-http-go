@@ -35,7 +35,7 @@ jobs:
         mkdir -p dist/tmp
 
         # POSIX
-        for arch in {linux,darwin}-{amd64,arm64}; do
+        for arch in linux-{amd64,arm64,riscv64} darwin-{amd64,arm64}; do
           GOOS=${arch%-*} make licenses
           ARCHIVE_NAME="ccache-storage-http-go-${VERSION}-${arch}"
           mkdir -p dist/tmp/"${ARCHIVE_NAME}"

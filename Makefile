@@ -7,7 +7,7 @@ BUILDFLAGS = -trimpath
 SOURCES = $(wildcard *.go)
 
 # Platform targets
-LINUX_TARGETS = $(BINARY_NAME)-linux-amd64 $(BINARY_NAME)-linux-arm64
+LINUX_TARGETS = $(BINARY_NAME)-linux-amd64 $(BINARY_NAME)-linux-arm64 $(BINARY_NAME)-linux-riscv64
 DARWIN_TARGETS = $(BINARY_NAME)-darwin-amd64 $(BINARY_NAME)-darwin-arm64
 WINDOWS_TARGETS = $(BINARY_NAME)-windows-amd64.exe $(BINARY_NAME)-windows-arm64.exe
 ALL_TARGETS = $(LINUX_TARGETS) $(DARWIN_TARGETS) $(WINDOWS_TARGETS)
