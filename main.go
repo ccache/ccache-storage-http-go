@@ -24,19 +24,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	config, err := parseConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	logger := newLogger(config.LogFile)
+	logger := newLogger(os.Getenv("CRSH_LOGFILE"))
 	defer logger.close()
 
 	logger.logf("Starting")
-	logger.logf("IPC endpoint: %s", config.IPCEndpoint)
-	logger.logf("URL: %s", config.URL)
-	logger.logf("Idle timeout: %s", config.IdleTimeout)
+
+	config, err := parseConfig(logger)
+	if err != nil {
+		logger.logf("Error: %v", err)
+		os.Exit(1)
+	}
 
 	server, err := newServer(config, logger)
 	if err != nil {

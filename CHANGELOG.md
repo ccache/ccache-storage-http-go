@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Prebuilt linux-riscv64 binary release.
 - Support for CRSH greeting message format 2.
+- Sending of config errors/warnings to ccache.
+
+### Changed
+
+- Improve logging of failures.
 
 ## [0.5] - 2026-03-18
 

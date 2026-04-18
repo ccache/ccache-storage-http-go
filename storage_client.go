@@ -18,7 +18,7 @@ import (
 type storageClient struct {
 	client      *http.Client
 	baseURL     *url.URL
-	layout      string
+	layout      layout
 	bearerToken string
 	headers     map[string]string
 	logger      *logger
@@ -49,10 +49,10 @@ func (s *storageClient) keyToPath(key []byte) string {
 	keyHex := hex.EncodeToString(key)
 
 	switch s.layout {
-	case "flat":
+	case layoutFlat:
 		return keyHex
 
-	case "bazel":
+	case layoutBazel:
 		// Bazel format: ac/ + 64 hex digits, so pad shorter keys by repeating the key prefix to reach the expected SHA256 size.
 		const sha256HexSize = 64
 		if len(keyHex) >= sha256HexSize {

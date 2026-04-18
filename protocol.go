@@ -32,7 +32,7 @@ const (
 	putFlagOverwrite = 0x01
 )
 
-func writeGreeting(w io.Writer, formatMax int) error {
+func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
 	caps := []byte{cap0}
 
 	format := greetingFormat1
@@ -56,9 +56,16 @@ func writeGreeting(w io.Writer, formatMax int) error {
 		if err := writeMsg(w, "ccache-storage-http-go "+version); err != nil {
 			return err
 		}
-		// diagnostics: 0 messages
-		if err := writeByte(w, 0); err != nil {
+		if len(diagnostics) > 255 {
+			diagnostics = diagnostics[:255]
+		}
+		if err := writeByte(w, uint8(len(diagnostics))); err != nil {
 			return err
+		}
+		for _, diag := range diagnostics {
+			if err := writeMsg(w, diag); err != nil {
+				return err
+			}
 		}
 	}
 
