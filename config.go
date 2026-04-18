@@ -18,6 +18,7 @@ type config struct {
 	IPCEndpoint string
 	URL         *url.URL
 	IdleTimeout time.Duration
+	FormatMax   int
 	Layout      string
 	BearerToken string
 	Headers     map[string]string
@@ -54,6 +55,17 @@ func parseConfig() (*config, error) {
 		return nil, fmt.Errorf("invalid CRSH_IDLE_TIMEOUT: %w", err)
 	}
 	cfg.IdleTimeout = time.Duration(timeoutSecs) * time.Second
+
+	formatMaxStr := os.Getenv("CRSH_FORMAT_MAX")
+	if formatMaxStr == "" {
+		cfg.FormatMax = 1
+	} else {
+		formatMax, err := strconv.Atoi(formatMaxStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CRSH_FORMAT_MAX: %w", err)
+		}
+		cfg.FormatMax = formatMax
+	}
 
 	numAttr := os.Getenv("CRSH_NUM_ATTR")
 	if numAttr == "" {

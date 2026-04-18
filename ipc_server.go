@@ -81,7 +81,7 @@ func (s *ipcServer) acceptLoop() {
 func (s *ipcServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	if err := writeGreeting(conn); err != nil {
+	if err := writeGreeting(conn, s.config.FormatMax); err != nil {
 		s.logger.logf("Failed to send greeting: %v", err)
 		return
 	}
