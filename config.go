@@ -30,6 +30,8 @@ type config struct {
 	Layout      layout
 	BearerToken string
 	Headers     map[string]string
+	UseNetrc    bool
+	NetrcFile   string
 }
 
 func parseConfig(logger *logger) (*config, error) {
@@ -111,6 +113,11 @@ func parseConfig(logger *logger) (*config, error) {
 			default:
 				cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("error: unknown layout: %s", value))
 			}
+		case "netrc-file":
+			cfg.NetrcFile = value
+			cfg.UseNetrc = true
+		case "use-netrc":
+			cfg.UseNetrc = value == "true"
 		default:
 			cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("warning: unknown attribute: %s", key))
 		}

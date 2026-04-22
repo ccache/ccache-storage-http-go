@@ -33,6 +33,8 @@ production ready) **C++** implementation.
 - Bearer token authentication support
 - Support for custom HTTP headers
 - Optional debug logging
+- [netrc](https://everything.curl.dev/usingcurl/netrc.html) support
+
 
 ## Installation
 
@@ -97,6 +99,8 @@ The helper supports the following custom attributes:
 
 - `@bearer-token`: Bearer token for `Authorization` header
 - `@header`: Custom HTTP headers (can be specified multiple times)
+- `@use-netrc`: Enable [netrc](https://everything.curl.dev/usingcurl/netrc.html) authentication
+- `@netrc-file`: Path to custom [netrc](https://everything.curl.dev/usingcurl/netrc.html) file (implies `@use-netrc`)
 - `@layout`: Storage layout mode
   - `subdirs` (default): First 2 hex chars as subdirectory
   - `flat`: All files in root directory

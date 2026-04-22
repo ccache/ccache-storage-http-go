@@ -10,18 +10,21 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"time"
 )
 
 type storageClient struct {
-	client      *http.Client
-	baseURL     *url.URL
-	layout      layout
-	bearerToken string
-	headers     map[string]string
-	logger      *logger
+	client        *http.Client
+	baseURL       *url.URL
+	layout        layout
+	bearerToken   string
+	headers       map[string]string
+	basicAuthUser string
+	basicAuthPass string
+	logger        *logger
 }
 
 func newStorageClient(cfg *config, logger *logger) (*storageClient, error) {
@@ -36,14 +39,39 @@ func newStorageClient(cfg *config, logger *logger) (*storageClient, error) {
 		},
 	}
 
-	return &storageClient{
+	sc := &storageClient{
 		client:      client,
 		baseURL:     cfg.URL,
 		layout:      cfg.Layout,
 		bearerToken: cfg.BearerToken,
 		headers:     cfg.Headers,
 		logger:      logger,
-	}, nil
+	}
+
+	if cfg.UseNetrc {
+		netrcPath := cfg.NetrcFile
+		if netrcPath == "" {
+			netrcPath = defaultNetrcPath()
+		}
+		if netrcPath != "" {
+			requestedLogin := ""
+			if cfg.URL.User != nil {
+				requestedLogin = cfg.URL.User.Username()
+			}
+
+			login, password, err := findNetrcCredentials(netrcPath, cfg.URL.Hostname(), requestedLogin)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					logger.logf("Warning: could not read netrc file %q: %v", netrcPath, err)
+				}
+			} else {
+				sc.basicAuthUser = login
+				sc.basicAuthPass = password
+			}
+		}
+	}
+
+	return sc, nil
 }
 
 func (s *storageClient) keyToPath(key []byte) string {
@@ -216,6 +244,8 @@ func (s *storageClient) addHeaders(req *http.Request) {
 
 	if s.bearerToken != "" {
 		req.Header.Set("Authorization", "Bearer "+s.bearerToken)
+	} else if s.basicAuthUser != "" {
+		req.SetBasicAuth(s.basicAuthUser, s.basicAuthPass)
 	}
 
 	for key, value := range s.headers {
