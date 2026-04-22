@@ -62,7 +62,7 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f $(BINARY_NAME)-*
+	rm -f $(BINARY_NAME)*
 	rm -f THIRD_PARTY_LICENSES.txt
 	$(GO) clean
 
