@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -22,7 +21,6 @@ type storageClient struct {
 	bearerToken string
 	headers     map[string]string
 	logger      *logger
-	mu          sync.Mutex
 }
 
 func newStorageClient(cfg *config, logger *logger) (*storageClient, error) {
@@ -83,9 +81,6 @@ func (s *storageClient) buildURL(key []byte) (string, error) {
 }
 
 func (s *storageClient) get(key []byte) ([]byte, bool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	urlStr, err := s.buildURL(key)
 	if err != nil {
 		return nil, false, err
@@ -122,9 +117,6 @@ func (s *storageClient) get(key []byte) ([]byte, bool, error) {
 }
 
 func (s *storageClient) put(key []byte, value []byte, overwrite bool) (bool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	urlStr, err := s.buildURL(key)
 	if err != nil {
 		return false, err
@@ -165,9 +157,6 @@ func (s *storageClient) put(key []byte, value []byte, overwrite bool) (bool, err
 }
 
 func (s *storageClient) remove(key []byte) (bool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	urlStr, err := s.buildURL(key)
 	if err != nil {
 		return false, err
