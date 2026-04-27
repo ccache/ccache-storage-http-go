@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -81,13 +82,24 @@ func (s *ipcServer) acceptLoop() {
 func (s *ipcServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	if err := writeGreeting(conn, s.config.FormatMax, s.config.Diagnostics); err != nil {
+	writer := bufio.NewWriter(conn)
+
+	if err := writeGreeting(writer, s.config.FormatMax, s.config.Diagnostics); err != nil {
+		s.logger.logf("Failed to send greeting: %v", err)
+		return
+	}
+	if err := writer.Flush(); err != nil {
 		s.logger.logf("Failed to send greeting: %v", err)
 		return
 	}
 
+	reader := bufio.NewReader(conn)
+
 	for {
-		shouldStop, err := processRequest(conn, s.storage, s.logger)
+		shouldStop, err := processRequest(reader, writer, s.storage, s.logger)
+		if err == nil {
+			err = writer.Flush()
+		}
 		if err != nil {
 			if err == io.EOF {
 				s.logger.logf("Client disconnected")

@@ -33,7 +33,7 @@ const (
 )
 
 func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
-	caps := []byte{cap0}
+	caps := [...]byte{cap0}
 
 	format := greetingFormat1
 	if formatMax >= greetingFormat2 {
@@ -46,10 +46,8 @@ func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
 	if err := writeByte(w, uint8(len(caps))); err != nil {
 		return err
 	}
-	for _, cap := range caps {
-		if err := writeByte(w, cap); err != nil {
-			return err
-		}
+	if _, err := w.Write(caps[:]); err != nil {
+		return err
 	}
 
 	if format >= greetingFormat2 {
@@ -73,11 +71,7 @@ func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
 }
 
 func readRequest(r io.Reader) (byte, error) {
-	reqType, err := readByte(r)
-	if err != nil {
-		return 0, err
-	}
-	return reqType, nil
+	return readByte(r)
 }
 
 func readKey(r io.Reader) ([]byte, error) {
@@ -95,8 +89,8 @@ func readKey(r io.Reader) ([]byte, error) {
 }
 
 func readValue(r io.Reader) ([]byte, error) {
-	var valueLen uint64
-	if err := binary.Read(r, binary.NativeEndian, &valueLen); err != nil {
+	valueLen, err := readUint64(r)
+	if err != nil {
 		return nil, err
 	}
 
@@ -124,8 +118,7 @@ func writeErr(w io.Writer, msg string) error {
 }
 
 func writeValue(w io.Writer, value []byte) error {
-	valueLen := uint64(len(value))
-	if err := binary.Write(w, binary.NativeEndian, valueLen); err != nil {
+	if err := writeUint64(w, uint64(len(value))); err != nil {
 		return err
 	}
 	_, err := w.Write(value)
@@ -133,16 +126,33 @@ func writeValue(w io.Writer, value []byte) error {
 }
 
 func writeByte(w io.Writer, b byte) error {
-	_, err := w.Write([]byte{b})
+	var buf [1]byte
+	buf[0] = b
+	_, err := w.Write(buf[:])
 	return err
 }
 
 func readByte(r io.Reader) (byte, error) {
-	buf := make([]byte, 1)
-	if _, err := io.ReadFull(r, buf); err != nil {
+	var buf [1]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return 0, err
 	}
 	return buf[0], nil
+}
+
+func writeUint64(w io.Writer, value uint64) error {
+	var buf [8]byte
+	binary.NativeEndian.PutUint64(buf[:], value)
+	_, err := w.Write(buf[:])
+	return err
+}
+
+func readUint64(r io.Reader) (uint64, error) {
+	var buf [8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return 0, err
+	}
+	return binary.NativeEndian.Uint64(buf[:]), nil
 }
 
 func writeMsg(w io.Writer, msg string) error {
@@ -152,7 +162,7 @@ func writeMsg(w io.Writer, msg string) error {
 	if err := writeByte(w, uint8(len(msg))); err != nil {
 		return err
 	}
-	_, err := w.Write([]byte(msg))
+	_, err := io.WriteString(w, msg)
 	return err
 }
 
@@ -258,33 +268,33 @@ func handleStop(w io.Writer, logger *logger) error {
 	return writeOK(w)
 }
 
-func processRequest(conn io.ReadWriter, s storage, logger *logger) (bool, error) {
-	reqType, err := readRequest(conn)
+func processRequest(r io.Reader, w io.Writer, s storage, logger *logger) (bool, error) {
+	reqType, err := readRequest(r)
 	if err != nil {
 		return false, err
 	}
 
 	switch reqType {
 	case requestGet:
-		if err := handleGet(conn, conn, s, logger); err != nil {
+		if err := handleGet(r, w, s, logger); err != nil {
 			return false, err
 		}
 	case requestPut:
-		if err := handlePut(conn, conn, s, logger); err != nil {
+		if err := handlePut(r, w, s, logger); err != nil {
 			return false, err
 		}
 	case requestRemove:
-		if err := handleRemove(conn, conn, s, logger); err != nil {
+		if err := handleRemove(r, w, s, logger); err != nil {
 			return false, err
 		}
 	case requestStop:
-		if err := handleStop(conn, logger); err != nil {
+		if err := handleStop(w, logger); err != nil {
 			return false, err
 		}
 		return true, nil // stop the server
 	default:
 		logger.logf("Unknown request type: 0x%02x", reqType)
-		return false, writeErr(conn, fmt.Sprintf("unknown request type: 0x%02x", reqType))
+		return false, writeErr(w, fmt.Sprintf("unknown request type: 0x%02x", reqType))
 	}
 
 	return false, nil

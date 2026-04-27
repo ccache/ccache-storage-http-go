@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Unnecessary serialization of storage client connections.
+- Inefficient IPC I/O.
 
 ### Changed
 
