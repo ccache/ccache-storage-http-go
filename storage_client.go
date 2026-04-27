@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -24,11 +25,13 @@ type storageClient struct {
 }
 
 func newStorageClient(cfg *config, logger *logger) (*storageClient, error) {
+	connectionPoolSize := max(32, runtime.GOMAXPROCS(0))
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 10,
+			MaxIdleConns:        connectionPoolSize,
+			MaxIdleConnsPerHost: connectionPoolSize,
+			MaxConnsPerHost:     connectionPoolSize,
 			IdleConnTimeout:     90 * time.Second,
 		},
 	}
