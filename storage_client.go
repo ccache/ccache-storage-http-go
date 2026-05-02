@@ -111,40 +111,36 @@ func (s *storageClient) buildURL(key []byte) (string, error) {
 	return base.String(), nil
 }
 
-func (s *storageClient) get(key []byte) ([]byte, bool, error) {
+func (s *storageClient) get(key []byte) (io.ReadCloser, int64, bool, error) {
 	urlStr, err := s.buildURL(key)
 	if err != nil {
-		return nil, false, err
+		return nil, 0, false, err
 	}
 
 	s.logger.logf("GET %s", urlStr)
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
-		return nil, false, err
+		return nil, 0, false, err
 	}
 
 	s.addHeaders(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, false, err
+		return nil, 0, false, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, false, nil
+		resp.Body.Close()
+		return nil, 0, false, nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, false, fmt.Errorf("HTTP %d", resp.StatusCode)
+		resp.Body.Close()
+		return nil, 0, false, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
-	value, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, false, err
-	}
-
-	return value, true, nil
+	return resp.Body, resp.ContentLength, true, nil
 }
 
 func (s *storageClient) put(key []byte, value []byte, overwrite bool) (bool, error) {

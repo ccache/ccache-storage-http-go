@@ -10,7 +10,7 @@ import (
 )
 
 type storage interface {
-	get(key []byte) ([]byte, bool, error)
+	get(key []byte) (io.ReadCloser, int64, bool, error)
 	put(key []byte, value []byte, overwrite bool) (bool, error)
 	remove(key []byte) (bool, error)
 }
@@ -188,15 +188,36 @@ func handleGet(r io.Reader, w io.Writer, s storage, logger *logger) error {
 
 	logger.logf("GET request for key %x", key)
 
-	value, found, err := s.get(key)
+	valueBody, valueLen, found, err := s.get(key)
 	if err != nil {
 		logger.logf("GET error: %v", err)
 		return writeErr(w, err.Error())
+	}
+	if valueBody != nil {
+		defer valueBody.Close()
 	}
 
 	if !found {
 		logger.logf("GET key not found")
 		return writeNoop(w)
+	}
+
+	if valueLen >= 0 {
+		logger.logf("GET success (%d bytes)", valueLen)
+		if err := writeOK(w); err != nil {
+			return err
+		}
+		if err := writeUint64(w, uint64(valueLen)); err != nil {
+			return err
+		}
+		_, err = io.Copy(w, valueBody)
+		return err
+	}
+
+	// Unknown value length from the server, so read all data to learn the length
+	value, err := io.ReadAll(valueBody)
+	if err != nil {
+		return err
 	}
 
 	logger.logf("GET success (%d bytes)", len(value))
