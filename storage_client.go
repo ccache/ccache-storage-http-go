@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const httpTransportBufferSize = 64 << 10
+
 type storageClient struct {
 	client        *http.Client
 	baseURL       *url.URL
@@ -36,6 +38,8 @@ func newStorageClient(cfg *config, logger *logger) (*storageClient, error) {
 			MaxIdleConnsPerHost: connectionPoolSize,
 			MaxConnsPerHost:     connectionPoolSize,
 			IdleConnTimeout:     90 * time.Second,
+			ReadBufferSize:      httpTransportBufferSize,
+			WriteBufferSize:     httpTransportBufferSize,
 		},
 	}
 

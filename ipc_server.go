@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const ipcBufferSize = 64 << 10
+
 type ipcServer struct {
 	config    *config
 	logger    *logger
@@ -82,7 +84,7 @@ func (s *ipcServer) acceptLoop() {
 func (s *ipcServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	writer := bufio.NewWriter(conn)
+	writer := bufio.NewWriterSize(conn, ipcBufferSize)
 
 	if err := writeGreeting(writer, s.config.FormatMax, s.config.Diagnostics); err != nil {
 		s.logger.logf("Failed to send greeting: %v", err)
@@ -93,7 +95,7 @@ func (s *ipcServer) handleConnection(conn net.Conn) {
 		return
 	}
 
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReaderSize(conn, ipcBufferSize)
 
 	for {
 		shouldStop, err := processRequest(reader, writer, s.storage, s.logger)
