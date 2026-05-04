@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Unnecessary serialization of storage client connections.
 - Inefficient IPC I/O.
+- Status code handling for HEAD requests.
 
 ### Changed
 

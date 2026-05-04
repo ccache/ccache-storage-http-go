@@ -236,7 +236,15 @@ func (s *storageClient) exists(urlStr string) (bool, error) {
 
 	io.Copy(io.Discard, resp.Body) // Read and discard to enable connection reuse
 
-	return resp.StatusCode == http.StatusOK, nil
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("HTTP %d", resp.StatusCode)
 }
 
 func (s *storageClient) addHeaders(req *http.Request) {
