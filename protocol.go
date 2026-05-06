@@ -7,11 +7,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 )
 
 type storage interface {
 	get(key []byte) (io.ReadCloser, int64, bool, error)
-	put(key []byte, value []byte, overwrite bool) (bool, error)
+	put(key []byte, value io.Reader, size int64, overwrite bool) (bool, error)
 	remove(key []byte) (bool, error)
 }
 
@@ -88,18 +89,8 @@ func readKey(r io.Reader) ([]byte, error) {
 	return key, nil
 }
 
-func readValue(r io.Reader) ([]byte, error) {
-	valueLen, err := readUint64(r)
-	if err != nil {
-		return nil, err
-	}
-
-	value := make([]byte, valueLen)
-	if _, err := io.ReadFull(r, value); err != nil {
-		return nil, err
-	}
-
-	return value, nil
+func readValueLen(r io.Reader) (uint64, error) {
+	return readUint64(r)
 }
 
 func writeOK(w io.Writer) error {
@@ -238,15 +229,23 @@ func handlePut(r io.Reader, w io.Writer, s storage, logger *logger) error {
 		return err
 	}
 
-	value, err := readValue(r)
+	valueLen, err := readValueLen(r)
 	if err != nil {
 		return err
 	}
+	if valueLen > math.MaxInt64 {
+		return fmt.Errorf("value too large: %d", valueLen)
+	}
+	valueReader := io.LimitReader(r, int64(valueLen))
 
 	overwrite := (flags & putFlagOverwrite) != 0
-	logger.logf("PUT request for key %x (%d bytes)", key, len(value))
+	logger.logf("PUT request for key %x (%d bytes)", key, valueLen)
 
-	stored, err := s.put(key, value, overwrite)
+	stored, err := s.put(key, valueReader, int64(valueLen), overwrite)
+	_, drainErr := io.Copy(io.Discard, valueReader)
+	if drainErr != nil {
+		return drainErr
+	}
 	if err != nil {
 		logger.logf("PUT error: %v", err)
 		return writeErr(w, err.Error())

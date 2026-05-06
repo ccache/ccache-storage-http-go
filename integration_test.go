@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -565,6 +566,35 @@ func TestIntegrationPutWithoutOverwriteReturnsNoopWhenKeyExists(t *testing.T) {
 	reqs := server.requests()
 	if len(reqs) != 1 || reqs[0].method != "HEAD" || reqs[0].path != "/face" {
 		t.Fatalf("want [HEAD /face], got %v", reqs)
+	}
+}
+
+func TestIntegrationPutWithoutOverwriteDrainsBodyBeforeNextRequest(t *testing.T) {
+	server := newStubServer(t, map[[2]string]responseSpec{
+		{"HEAD", "/face"}: {status: 200},
+		{"GET", "/beef"}:  {status: 200, body: []byte("after-noop")},
+	})
+
+	h := newHelperProcess(t, server.url())
+
+	status, errMsg := h.ipcPut("face", []byte(strings.Repeat("x", 128<<10)), false)
+	if status != responseNoop {
+		t.Fatalf("status: want %d (NOOP), got %d (err=%q)", responseNoop, status, errMsg)
+	}
+
+	status, payload := h.ipcGet("beef")
+	if status != responseOK {
+		t.Fatalf("GET status: want %d (OK), got %d", responseOK, status)
+	}
+	if string(payload) != "after-noop" {
+		t.Fatalf("GET payload: want %q, got %q", "after-noop", string(payload))
+	}
+
+	reqs := server.requests()
+	if len(reqs) != 2 ||
+		reqs[0].method != "HEAD" || reqs[0].path != "/face" ||
+		reqs[1].method != "GET" || reqs[1].path != "/beef" {
+		t.Fatalf("want [HEAD /face, GET /beef], got %v", reqs)
 	}
 }
 

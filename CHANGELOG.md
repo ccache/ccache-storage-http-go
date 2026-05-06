@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Improve logging of failures.
 - Improve connection pool size.
-- Make transfer of GET payloads streaming, avoiding an extra data copy.
+- Make transfer of GET and PUT payloads streaming, avoiding an extra data copy.
 - Increase network buffers to 64 KiB.
 
 ## [0.5] - 2026-03-18

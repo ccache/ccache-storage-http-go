@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -147,7 +146,7 @@ func (s *storageClient) get(key []byte) (io.ReadCloser, int64, bool, error) {
 	return resp.Body, resp.ContentLength, true, nil
 }
 
-func (s *storageClient) put(key []byte, value []byte, overwrite bool) (bool, error) {
+func (s *storageClient) put(key []byte, value io.Reader, size int64, overwrite bool) (bool, error) {
 	urlStr, err := s.buildURL(key)
 	if err != nil {
 		return false, err
@@ -163,12 +162,12 @@ func (s *storageClient) put(key []byte, value []byte, overwrite bool) (bool, err
 		}
 	}
 
-	s.logger.logf("PUT %s (%d bytes)", urlStr, len(value))
-	req, err := http.NewRequest("PUT", urlStr, bytes.NewReader(value))
+	s.logger.logf("PUT %s (%d bytes)", urlStr, size)
+	req, err := http.NewRequest("PUT", urlStr, value)
 	if err != nil {
 		return false, err
 	}
-
+	req.ContentLength = size
 	s.addHeaders(req)
 	req.Header.Set("Content-Type", "application/octet-stream")
 

@@ -4,10 +4,12 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -70,4 +72,44 @@ func TestStorageClientAllowsConcurrentRequests(t *testing.T) {
 
 	close(release)
 	wg.Wait()
+}
+
+func TestStorageClientPutWithoutOverwritePropagatesHeadErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodHead:
+			w.WriteHeader(http.StatusInternalServerError)
+		case http.MethodPut:
+			t.Fatal("unexpected PUT after failing HEAD preflight")
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	defer server.Close()
+
+	baseURL, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatalf("parse server URL: %v", err)
+	}
+
+	client, err := newStorageClient(&config{
+		URL:     baseURL,
+		Layout:  layoutFlat,
+		Headers: map[string]string{},
+	}, newLogger(""))
+	if err != nil {
+		t.Fatalf("newStorageClient returned error: %v", err)
+	}
+
+	payload := []byte("payload")
+	stored, err := client.put([]byte{0xf0, 0x0d}, bytes.NewReader(payload), int64(len(payload)), false)
+	if err == nil {
+		t.Fatal("put returned nil error, want HTTP 500")
+	}
+	if stored {
+		t.Fatal("put returned stored=true, want false")
+	}
+	if !strings.Contains(err.Error(), "HTTP 500") {
+		t.Fatalf("put returned error %q, want HTTP 500", err)
+	}
 }
