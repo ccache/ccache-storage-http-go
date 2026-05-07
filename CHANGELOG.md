@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Improve connection pool size.
 - Make transfer of GET and PUT payloads streaming, avoiding an extra data copy.
 - Increase network buffers to 64 KiB.
+- Remove server connection timeout (ccache handles connection timeout).
 
 ## [0.5] - 2026-03-18
 
