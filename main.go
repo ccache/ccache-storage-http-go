@@ -9,7 +9,7 @@ import (
 	"runtime"
 )
 
-const version = "0.5"
+const version = "0.6"
 
 const helpText = `This is a ccache HTTP(S) storage helper, usually started automatically by ccache
 when needed. More information here: https://ccache.dev/storage-helpers.html
