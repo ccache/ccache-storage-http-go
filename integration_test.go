@@ -123,7 +123,12 @@ type helperProcess struct {
 	conn       net.Conn
 }
 
-func newHelperProcess(t *testing.T, baseURL string) *helperProcess {
+type helperAttr struct {
+	key   string
+	value string
+}
+
+func newHelperProcessWithAttrs(t *testing.T, baseURL string, attrs []helperAttr) *helperProcess {
 	t.Helper()
 	tmpDir := t.TempDir()
 	h := &helperProcess{
@@ -133,12 +138,16 @@ func newHelperProcess(t *testing.T, baseURL string) *helperProcess {
 		socketPath: filepath.Join(tmpDir, "helper.sock"),
 		logPath:    filepath.Join(tmpDir, "helper.log"),
 	}
-	h.start()
+	h.start(attrs)
 	t.Cleanup(h.stop)
 	return h
 }
 
-func (h *helperProcess) start() {
+func newHelperProcess(t *testing.T, baseURL string) *helperProcess {
+	return newHelperProcessWithAttrs(t, baseURL, []helperAttr{{key: "layout", value: "flat"}})
+}
+
+func (h *helperProcess) start(attrs []helperAttr) {
 	h.t.Helper()
 
 	exe, err := os.Executable()
@@ -151,11 +160,15 @@ func (h *helperProcess) start() {
 		"CRSH_IPC_ENDPOINT="+h.socketPath,
 		"CRSH_URL="+h.baseURL,
 		"CRSH_IDLE_TIMEOUT=30",
-		"CRSH_NUM_ATTR=1",
-		"CRSH_ATTR_KEY_0=layout",
-		"CRSH_ATTR_VALUE_0=flat",
+		fmt.Sprintf("CRSH_NUM_ATTR=%d", len(attrs)),
 		"CRSH_LOGFILE="+h.logPath,
 	)
+	for i, attr := range attrs {
+		env = append(env,
+			fmt.Sprintf("CRSH_ATTR_KEY_%d=%s", i, attr.key),
+			fmt.Sprintf("CRSH_ATTR_VALUE_%d=%s", i, attr.value),
+		)
+	}
 
 	h.cmd = exec.Command(exe)
 	h.cmd.Env = env
@@ -201,7 +214,7 @@ func (h *helperProcess) start() {
 func (h *helperProcess) validateGreeting() {
 	h.t.Helper()
 
-	greeting := make([]byte, 3)
+	greeting := make([]byte, 4)
 	if _, err := io.ReadFull(h.conn, greeting); err != nil {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
@@ -214,7 +227,7 @@ func (h *helperProcess) validateGreeting() {
 		h.t.Fatalf("unexpected protocol version %v; helper log:\n%s", greeting[0], h.readLog())
 	}
 
-	if greeting[1] != 1 || greeting[2] != cap0 {
+	if greeting[1] != 2 || greeting[2] != capGetPutRemove || greeting[3] != capInfo {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
 		h.t.Fatalf("unexpected capabilities; helper log:\n%s", h.readLog())
@@ -241,6 +254,25 @@ func (h *helperProcess) stop() {
 		}
 		h.cmd = nil
 	}
+}
+
+type infoResponse struct {
+	identity    string
+	diagnostics []string
+}
+
+func (h *helperProcess) ipcInfo() infoResponse {
+	h.t.Helper()
+	h.write([]byte{requestInfo})
+
+	identity := h.readMsg()
+	diagCount := int(h.readByte())
+	diagnostics := make([]string, diagCount)
+	for i := range diagnostics {
+		diagnostics[i] = h.readMsg()
+	}
+
+	return infoResponse{identity: identity, diagnostics: diagnostics}
 }
 
 // ipcGet sends a GET request over IPC and returns (status, payload).
@@ -363,6 +395,37 @@ func hexNibble(t *testing.T, c byte) byte {
 }
 
 // --- Integration tests ---
+
+func TestIntegrationInfoReturnsIdentityAndDiagnostics(t *testing.T) {
+	server := newStubServer(t, map[[2]string]responseSpec{})
+
+	h := newHelperProcessWithAttrs(t, server.url(), []helperAttr{
+		{key: "layout", value: "flat"},
+		{key: "header", value: "broken-header"},
+		{key: "mystery", value: "value"},
+	})
+
+	info := h.ipcInfo()
+
+	if info.identity != "ccache-storage-http-go "+version {
+		t.Fatalf("identity: want %q, got %q", "ccache-storage-http-go "+version, info.identity)
+	}
+	wantDiagnostics := []string{
+		"error: invalid header (no \"=\"): broken-header",
+		"warning: unknown attribute: mystery",
+	}
+	if len(info.diagnostics) != len(wantDiagnostics) {
+		t.Fatalf("diagnostics: want %d entries, got %d (%v)", len(wantDiagnostics), len(info.diagnostics), info.diagnostics)
+	}
+	for i, want := range wantDiagnostics {
+		if info.diagnostics[i] != want {
+			t.Fatalf("diagnostics[%d]: want %q, got %q", i, want, info.diagnostics[i])
+		}
+	}
+	if reqs := server.requests(); len(reqs) != 0 {
+		t.Fatalf("want no upstream HTTP requests, got %v", reqs)
+	}
+}
 
 func TestIntegrationGetWithContentLength(t *testing.T) {
 	server := newStubServer(t, map[[2]string]responseSpec{

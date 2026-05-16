@@ -18,12 +18,14 @@ type storage interface {
 
 const (
 	protocolVersion = 0x01
-	cap0            = 0x00 // get/put/remove/stop operations
+	capGetPutRemove = 0x00
+	capInfo         = 0x01
 
 	requestGet    = 0x00
 	requestPut    = 0x01
 	requestRemove = 0x02
 	requestStop   = 0x03
+	requestInfo   = 0x04
 
 	responseOK   = 0x00
 	responseNoop = 0x01
@@ -33,7 +35,7 @@ const (
 )
 
 func writeGreeting(w io.Writer) error {
-	caps := [...]byte{cap0}
+	caps := [...]byte{capGetPutRemove, capInfo}
 
 	if err := writeByte(w, protocolVersion); err != nil {
 		return err
@@ -195,6 +197,27 @@ func handleGet(r io.Reader, w io.Writer, s storage, logger *logger) error {
 	return writeValue(w, value)
 }
 
+func handleInfo(w io.Writer, c *config, logger *logger) error {
+	logger.logf("INFO request")
+
+	if err := writeMsg(w, "ccache-storage-http-go "+version); err != nil {
+		return err
+	}
+	diagnostics := c.Diagnostics
+	if len(diagnostics) > 255 {
+		diagnostics = diagnostics[:255]
+	}
+	if err := writeByte(w, uint8(len(diagnostics))); err != nil {
+		return err
+	}
+	for _, diag := range diagnostics {
+		if err := writeMsg(w, diag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func handlePut(r io.Reader, w io.Writer, s storage, logger *logger) error {
 	key, err := readKey(r)
 	if err != nil {
@@ -265,7 +288,7 @@ func handleStop(w io.Writer, logger *logger) error {
 	return writeOK(w)
 }
 
-func processRequest(r io.Reader, w io.Writer, s storage, logger *logger) (bool, error) {
+func processRequest(r io.Reader, w io.Writer, s storage, logger *logger, c *config) (bool, error) {
 	reqType, err := readRequest(r)
 	if err != nil {
 		return false, err
@@ -274,6 +297,10 @@ func processRequest(r io.Reader, w io.Writer, s storage, logger *logger) (bool, 
 	switch reqType {
 	case requestGet:
 		if err := handleGet(r, w, s, logger); err != nil {
+			return false, err
+		}
+	case requestInfo:
+		if err := handleInfo(w, c, logger); err != nil {
 			return false, err
 		}
 	case requestPut:

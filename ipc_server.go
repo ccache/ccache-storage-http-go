@@ -98,7 +98,7 @@ func (s *ipcServer) handleConnection(conn net.Conn) {
 	reader := bufio.NewReaderSize(conn, ipcBufferSize)
 
 	for {
-		shouldStop, err := processRequest(reader, writer, s.storage, s.logger)
+		shouldStop, err := processRequest(reader, writer, s.storage, s.logger, s.config)
 		if err == nil {
 			err = writer.Flush()
 		}
