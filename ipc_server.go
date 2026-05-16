@@ -86,7 +86,7 @@ func (s *ipcServer) handleConnection(conn net.Conn) {
 
 	writer := bufio.NewWriterSize(conn, ipcBufferSize)
 
-	if err := writeGreeting(writer, s.config.FormatMax, s.config.Diagnostics); err != nil {
+	if err := writeGreeting(writer); err != nil {
 		s.logger.logf("Failed to send greeting: %v", err)
 		return
 	}

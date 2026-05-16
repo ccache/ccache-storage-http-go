@@ -23,7 +23,6 @@ import (
 )
 
 const testHelperEnv = "CRSH_TEST_HELPER"
-const unsetFormatMax = -1
 
 func TestMain(m *testing.M) {
 	// When re-invoked as the helper process, behave as the real binary.
@@ -120,12 +119,11 @@ type helperProcess struct {
 	tmpDir     string
 	socketPath string
 	logPath    string
-	formatMax  int
 	cmd        *exec.Cmd
 	conn       net.Conn
 }
 
-func newHelperProcessWithFormatMax(t *testing.T, baseURL string, formatMax int) *helperProcess {
+func newHelperProcess(t *testing.T, baseURL string) *helperProcess {
 	t.Helper()
 	tmpDir := t.TempDir()
 	h := &helperProcess{
@@ -134,23 +132,10 @@ func newHelperProcessWithFormatMax(t *testing.T, baseURL string, formatMax int) 
 		tmpDir:     tmpDir,
 		socketPath: filepath.Join(tmpDir, "helper.sock"),
 		logPath:    filepath.Join(tmpDir, "helper.log"),
-		formatMax:  formatMax,
 	}
 	h.start()
 	t.Cleanup(h.stop)
 	return h
-}
-
-func newHelperProcess(t *testing.T, baseURL string) *helperProcess {
-	t.Helper()
-	return newHelperProcessWithFormatMax(t, baseURL, greetingFormat2)
-}
-
-func formatMaxLabel(formatMax int) string {
-	if formatMax == unsetFormatMax {
-		return "CRSH_FORMAT_MAX unset"
-	}
-	return fmt.Sprintf("CRSH_FORMAT_MAX=%d", formatMax)
 }
 
 func (h *helperProcess) start() {
@@ -171,9 +156,6 @@ func (h *helperProcess) start() {
 		"CRSH_ATTR_VALUE_0=flat",
 		"CRSH_LOGFILE="+h.logPath,
 	)
-	if h.formatMax != unsetFormatMax {
-		env = append(env, "CRSH_FORMAT_MAX="+strconv.Itoa(h.formatMax))
-	}
 
 	h.cmd = exec.Command(exe)
 	h.cmd.Env = env
@@ -226,38 +208,17 @@ func (h *helperProcess) validateGreeting() {
 		h.t.Fatalf("read greeting: %v; helper log:\n%s", err, h.readLog())
 	}
 
-	wantFormat := byte(greetingFormat1)
-	if h.formatMax >= int(greetingFormat2) {
-		wantFormat = byte(greetingFormat2)
-	}
-	if greeting[0] != wantFormat || greeting[1] != 1 || greeting[2] != cap0 {
+	if greeting[0] != 1 {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
-		h.t.Fatalf("unexpected greeting %v for %s; helper log:\n%s", greeting, formatMaxLabel(h.formatMax), h.readLog())
+		h.t.Fatalf("unexpected protocol version %v; helper log:\n%s", greeting[0], h.readLog())
 	}
 
-	if wantFormat < byte(greetingFormat2) {
-		return
-	}
-
-	if serverId := h.readMsg(); serverId != "ccache-storage-http-go "+version {
+	if greeting[1] != 1 || greeting[2] != cap0 {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
-		h.t.Fatalf("unexpected greeting banner %q; helper log:\n%s", serverId, h.readLog())
+		h.t.Fatalf("unexpected capabilities; helper log:\n%s", h.readLog())
 	}
-
-	diagCount := h.readByte()
-	if diagCount == 0 {
-		return
-	}
-
-	diagnostics := make([]string, diagCount)
-	for i := range diagnostics {
-		diagnostics[i] = h.readMsg()
-	}
-	h.cmd.Process.Kill()
-	h.cmd.Wait()
-	h.t.Fatalf("unexpected greeting diagnostics %v; helper log:\n%s", diagnostics, h.readLog())
 }
 
 func (h *helperProcess) stop() {
@@ -402,25 +363,6 @@ func hexNibble(t *testing.T, c byte) byte {
 }
 
 // --- Integration tests ---
-
-func TestIntegrationGreetingDefaultsToFormat1WhenFormatMaxIsUnset(t *testing.T) {
-	server := newStubServer(t, map[[2]string]responseSpec{})
-
-	h := newHelperProcessWithFormatMax(t, server.url(), unsetFormatMax)
-
-	status, payload := h.ipcGet("beef")
-
-	if status != responseNoop {
-		t.Fatalf("status: want %d (NOOP), got %d", responseNoop, status)
-	}
-	if payload != nil {
-		t.Fatalf("payload: want nil, got %q", payload)
-	}
-	reqs := server.requests()
-	if len(reqs) != 1 || reqs[0].method != "GET" || reqs[0].path != "/beef" {
-		t.Fatalf("want [GET /beef], got %v", reqs)
-	}
-}
 
 func TestIntegrationGetWithContentLength(t *testing.T) {
 	server := newStubServer(t, map[[2]string]responseSpec{

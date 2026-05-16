@@ -25,7 +25,6 @@ type config struct {
 	IPCEndpoint string
 	URL         *url.URL
 	IdleTimeout time.Duration
-	FormatMax   int
 	Diagnostics []string
 	Layout      layout
 	BearerToken string
@@ -68,17 +67,6 @@ func parseConfig(logger *logger) (*config, error) {
 	}
 	cfg.IdleTimeout = time.Duration(timeoutSecs) * time.Second
 	logger.logf("Idle timeout: %s", cfg.IdleTimeout)
-
-	formatMaxStr := os.Getenv("CRSH_FORMAT_MAX")
-	if formatMaxStr == "" {
-		cfg.FormatMax = 1
-	} else {
-		formatMax, err := strconv.Atoi(formatMaxStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid CRSH_FORMAT_MAX: %w", err)
-		}
-		cfg.FormatMax = formatMax
-	}
 
 	numAttr := os.Getenv("CRSH_NUM_ATTR")
 	if numAttr == "" {

@@ -17,8 +17,7 @@ type storage interface {
 }
 
 const (
-	greetingFormat1 = 0x01
-	greetingFormat2 = 0x02
+	protocolVersion = 0x01
 	cap0            = 0x00 // get/put/remove/stop operations
 
 	requestGet    = 0x00
@@ -33,15 +32,10 @@ const (
 	putFlagOverwrite = 0x01
 )
 
-func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
+func writeGreeting(w io.Writer) error {
 	caps := [...]byte{cap0}
 
-	format := greetingFormat1
-	if formatMax >= greetingFormat2 {
-		format = greetingFormat2
-	}
-
-	if err := writeByte(w, byte(format)); err != nil {
+	if err := writeByte(w, protocolVersion); err != nil {
 		return err
 	}
 	if err := writeByte(w, uint8(len(caps))); err != nil {
@@ -49,23 +43,6 @@ func writeGreeting(w io.Writer, formatMax int, diagnostics []string) error {
 	}
 	if _, err := w.Write(caps[:]); err != nil {
 		return err
-	}
-
-	if format >= greetingFormat2 {
-		if err := writeMsg(w, "ccache-storage-http-go "+version); err != nil {
-			return err
-		}
-		if len(diagnostics) > 255 {
-			diagnostics = diagnostics[:255]
-		}
-		if err := writeByte(w, uint8(len(diagnostics))); err != nil {
-			return err
-		}
-		for _, diag := range diagnostics {
-			if err := writeMsg(w, diag); err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil
