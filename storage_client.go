@@ -113,6 +113,16 @@ func (s *storageClient) buildURL(key []byte) (string, error) {
 	return base.String(), nil
 }
 
+func (s *storageClient) exists(key []byte) (bool, error) {
+	urlStr, err := s.buildURL(key)
+	if err != nil {
+		return false, err
+	}
+
+	s.logger.logf("EXISTS %s", urlStr)
+	return s.head(urlStr)
+}
+
 func (s *storageClient) get(key []byte) (io.ReadCloser, int64, bool, error) {
 	urlStr, err := s.buildURL(key)
 	if err != nil {
@@ -152,7 +162,7 @@ func (s *storageClient) put(key []byte, value io.Reader, size int64, overwrite b
 	}
 
 	if !overwrite {
-		exists, err := s.exists(urlStr)
+		exists, err := s.head(urlStr)
 		if err != nil {
 			return false, err
 		}
@@ -218,7 +228,7 @@ func (s *storageClient) remove(key []byte) (bool, error) {
 	return false, fmt.Errorf("HTTP %d", resp.StatusCode)
 }
 
-func (s *storageClient) exists(urlStr string) (bool, error) {
+func (s *storageClient) head(urlStr string) (bool, error) {
 	req, err := http.NewRequest("HEAD", urlStr, nil)
 	if err != nil {
 		return false, err

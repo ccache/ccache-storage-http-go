@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -214,7 +215,7 @@ func (h *helperProcess) start(attrs []helperAttr) {
 func (h *helperProcess) validateGreeting() {
 	h.t.Helper()
 
-	greeting := make([]byte, 4)
+	greeting := make([]byte, 5)
 	if _, err := io.ReadFull(h.conn, greeting); err != nil {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
@@ -227,7 +228,7 @@ func (h *helperProcess) validateGreeting() {
 		h.t.Fatalf("unexpected protocol version %v; helper log:\n%s", greeting[0], h.readLog())
 	}
 
-	if greeting[1] != 2 || greeting[2] != capGetPutRemove || greeting[3] != capInfo {
+	if !bytes.Equal(greeting[1:], []byte{3, capGetPutRemove, capInfo, capExists}) {
 		h.cmd.Process.Kill()
 		h.cmd.Wait()
 		h.t.Fatalf("unexpected capabilities; helper log:\n%s", h.readLog())

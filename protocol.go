@@ -11,6 +11,7 @@ import (
 )
 
 type storage interface {
+	exists(key []byte) (bool, error)
 	get(key []byte) (io.ReadCloser, int64, bool, error)
 	put(key []byte, value io.Reader, size int64, overwrite bool) (bool, error)
 	remove(key []byte) (bool, error)
@@ -18,14 +19,17 @@ type storage interface {
 
 const (
 	protocolVersion = 0x01
+
 	capGetPutRemove = 0x00
 	capInfo         = 0x01
+	capExists       = 0x02
 
 	requestGet    = 0x00
 	requestPut    = 0x01
 	requestRemove = 0x02
 	requestStop   = 0x03
 	requestInfo   = 0x04
+	requestExists = 0x05
 
 	responseOK   = 0x00
 	responseNoop = 0x01
@@ -35,7 +39,7 @@ const (
 )
 
 func writeGreeting(w io.Writer) error {
-	caps := [...]byte{capGetPutRemove, capInfo}
+	caps := [...]byte{capGetPutRemove, capInfo, capExists}
 
 	if err := writeByte(w, protocolVersion); err != nil {
 		return err
@@ -95,6 +99,13 @@ func writeValue(w io.Writer, value []byte) error {
 	return err
 }
 
+func writeBool(w io.Writer, b bool) error {
+	if b {
+		return writeByte(w, 0x01)
+	}
+	return writeByte(w, 0x00)
+}
+
 func writeByte(w io.Writer, b byte) error {
 	var buf [1]byte
 	buf[0] = b
@@ -148,6 +159,27 @@ func readMsg(r io.Reader) (string, error) {
 	}
 
 	return string(msg), nil
+}
+
+func handleExists(r io.Reader, w io.Writer, s storage, logger *logger) error {
+	key, err := readKey(r)
+	if err != nil {
+		return err
+	}
+
+	logger.logf("EXISTS request for key %x", key)
+
+	found, err := s.exists(key)
+	if err != nil {
+		logger.logf("EXISTS error: %v", err)
+		return writeErr(w, err.Error())
+	}
+
+	logger.logf("EXISTS result: %v", found)
+	if err := writeOK(w); err != nil {
+		return err
+	}
+	return writeBool(w, found)
 }
 
 func handleGet(r io.Reader, w io.Writer, s storage, logger *logger) error {
@@ -295,6 +327,10 @@ func processRequest(r io.Reader, w io.Writer, s storage, logger *logger, c *conf
 	}
 
 	switch reqType {
+	case requestExists:
+		if err := handleExists(r, w, s, logger); err != nil {
+			return false, err
+		}
 	case requestGet:
 		if err := handleGet(r, w, s, logger); err != nil {
 			return false, err
