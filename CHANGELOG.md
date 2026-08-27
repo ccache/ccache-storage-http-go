@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- New `bearer-token-file` attribute for reading the bearer token from a file
+  for each request, so that the token can be rotated without restarting the
+  helper.
+
 ### Changed
 
 - Use ccache-go-storage-helper v0.1.0.

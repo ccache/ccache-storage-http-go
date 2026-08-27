@@ -98,6 +98,10 @@ See also the [HTTP storage wiki page] for tips on how to set up a storage server
 The helper supports the following custom attributes:
 
 - `@bearer-token`: Bearer token for `Authorization` header
+- `@bearer-token-file`: Path to file containing the bearer token for the
+  `Authorization` header (surrounding whitespace is trimmed). The file is read
+  for each request, so the token can be rotated without restarting the helper.
+  Cannot be combined with `@bearer-token`.
 - `@header`: Custom HTTP headers (can be specified multiple times)
 - `@use-netrc`: Enable [netrc](https://everything.curl.dev/usingcurl/netrc.html) authentication
 - `@netrc-file`: Path to custom [netrc](https://everything.curl.dev/usingcurl/netrc.html) file (implies `@use-netrc`)

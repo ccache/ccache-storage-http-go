@@ -62,9 +62,10 @@ type responseSpec struct {
 
 // recordedRequest holds the details of a request the stub server received.
 type recordedRequest struct {
-	method string
-	path   string
-	body   []byte
+	method        string
+	path          string
+	body          []byte
+	authorization string
 }
 
 // stubServer is a test HTTP server that routes requests by (method, path) and
@@ -81,7 +82,12 @@ func newStubServer(t *testing.T, routes map[[2]string]responseSpec) *stubServer 
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		s.mu.Lock()
-		s.reqs = append(s.reqs, recordedRequest{method: r.Method, path: r.URL.Path, body: body})
+		s.reqs = append(s.reqs, recordedRequest{
+			method:        r.Method,
+			path:          r.URL.Path,
+			body:          body,
+			authorization: r.Header.Get("Authorization"),
+		})
 		s.mu.Unlock()
 
 		spec, ok := routes[[2]string{r.Method, r.URL.Path}]
@@ -662,5 +668,70 @@ func TestIntegrationPutServerErrorIsReported(t *testing.T) {
 	reqs := server.requests()
 	if len(reqs) != 1 || reqs[0].method != "PUT" || reqs[0].path != "/aaaa" {
 		t.Fatalf("want [PUT /aaaa], got %v", reqs)
+	}
+}
+
+func TestIntegrationBearerTokenFileRotation(t *testing.T) {
+	server := newStubServer(t, map[[2]string]responseSpec{
+		{"GET", "/abcd"}: {status: 200, body: []byte("cache-hit")},
+	})
+
+	tokenFile := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenFile, []byte("first-token\n"), 0o600); err != nil {
+		t.Fatalf("write token file: %v", err)
+	}
+
+	h := newHelperProcessWithAttrs(t, server.url(), []helperAttr{
+		{key: "layout", value: "flat"},
+		{key: "bearer-token-file", value: tokenFile},
+	})
+
+	status, _ := h.ipcGet("abcd")
+	if status != responseOK {
+		t.Fatalf("first GET status: want %d (OK), got %d", responseOK, status)
+	}
+
+	if err := os.WriteFile(tokenFile, []byte("second-token\n"), 0o600); err != nil {
+		t.Fatalf("rewrite token file: %v", err)
+	}
+
+	status, _ = h.ipcGet("abcd")
+	if status != responseOK {
+		t.Fatalf("second GET status: want %d (OK), got %d", responseOK, status)
+	}
+
+	reqs := server.requests()
+	if len(reqs) != 2 {
+		t.Fatalf("want 2 requests, got %v", reqs)
+	}
+	if reqs[0].authorization != "Bearer first-token" {
+		t.Fatalf("first Authorization: want %q, got %q", "Bearer first-token", reqs[0].authorization)
+	}
+	if reqs[1].authorization != "Bearer second-token" {
+		t.Fatalf("second Authorization: want %q, got %q", "Bearer second-token", reqs[1].authorization)
+	}
+}
+
+func TestIntegrationBothBearerTokenAttrsIsError(t *testing.T) {
+	server := newStubServer(t, map[[2]string]responseSpec{})
+
+	tokenFile := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenFile, []byte("file-token\n"), 0o600); err != nil {
+		t.Fatalf("write token file: %v", err)
+	}
+
+	h := newHelperProcessWithAttrs(t, server.url(), []helperAttr{
+		{key: "bearer-token", value: "static-token"},
+		{key: "bearer-token-file", value: tokenFile},
+	})
+
+	info := h.ipcInfo()
+
+	wantDiagnostic := "error: bearer-token and bearer-token-file cannot both be set"
+	if len(info.diagnostics) != 1 || info.diagnostics[0] != wantDiagnostic {
+		t.Fatalf("diagnostics: want [%q], got %v", wantDiagnostic, info.diagnostics)
+	}
+	if reqs := server.requests(); len(reqs) != 0 {
+		t.Fatalf("want no upstream HTTP requests, got %v", reqs)
 	}
 }

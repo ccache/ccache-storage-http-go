@@ -21,12 +21,13 @@ const (
 
 type config struct {
 	*storagehelper.Config
-	URL         *url.URL
-	Layout      layout
-	BearerToken string
-	Headers     map[string]string
-	UseNetrc    bool
-	NetrcFile   string
+	URL             *url.URL
+	Layout          layout
+	BearerToken     string
+	BearerTokenFile string
+	Headers         map[string]string
+	UseNetrc        bool
+	NetrcFile       string
 }
 
 func parseConfig(logger *storagehelper.Logger) (*config, error) {
@@ -55,6 +56,8 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 		switch key {
 		case "bearer-token":
 			cfg.BearerToken = value
+		case "bearer-token-file":
+			cfg.BearerTokenFile = value
 		case "header":
 			idx := strings.Index(value, "=")
 			if idx >= 0 {
@@ -77,6 +80,10 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 		default:
 			cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("warning: unknown attribute: %s", key))
 		}
+	}
+
+	if cfg.BearerToken != "" && cfg.BearerTokenFile != "" {
+		cfg.Diagnostics = append(cfg.Diagnostics, "error: bearer-token and bearer-token-file cannot both be set")
 	}
 
 	for _, diag := range cfg.Diagnostics {

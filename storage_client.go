@@ -21,14 +21,15 @@ import (
 const httpTransportBufferSize = 64 << 10
 
 type storageClient struct {
-	client        *http.Client
-	baseURL       *url.URL
-	layout        layout
-	bearerToken   string
-	headers       map[string]string
-	basicAuthUser string
-	basicAuthPass string
-	logger        *storagehelper.Logger
+	client          *http.Client
+	baseURL         *url.URL
+	layout          layout
+	bearerToken     string
+	bearerTokenFile string
+	headers         map[string]string
+	basicAuthUser   string
+	basicAuthPass   string
+	logger          *storagehelper.Logger
 }
 
 // requestBody lets callers wait until the HTTP transport has stopped reading
@@ -71,12 +72,13 @@ func newStorageClient(cfg *config, logger *storagehelper.Logger) (*storageClient
 	}
 
 	sc := &storageClient{
-		client:      client,
-		baseURL:     cfg.URL,
-		layout:      cfg.Layout,
-		bearerToken: cfg.BearerToken,
-		headers:     cfg.Headers,
-		logger:      logger,
+		client:          client,
+		baseURL:         cfg.URL,
+		layout:          cfg.Layout,
+		bearerToken:     cfg.BearerToken,
+		bearerTokenFile: cfg.BearerTokenFile,
+		headers:         cfg.Headers,
+		logger:          logger,
 	}
 
 	if cfg.UseNetrc {
@@ -171,7 +173,9 @@ func (s *storageClient) Get(key []byte) (io.ReadCloser, int64, bool, error) {
 		return nil, 0, false, err
 	}
 
-	s.addHeaders(req)
+	if err := s.addHeaders(req); err != nil {
+		return nil, 0, false, err
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -214,7 +218,9 @@ func (s *storageClient) Put(key []byte, value io.Reader, size int64, overwrite b
 		return false, err
 	}
 	req.ContentLength = size
-	s.addHeaders(req)
+	if err := s.addHeaders(req); err != nil {
+		return false, err
+	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := s.client.Do(req)
@@ -245,7 +251,9 @@ func (s *storageClient) Remove(key []byte) (bool, error) {
 		return false, err
 	}
 
-	s.addHeaders(req)
+	if err := s.addHeaders(req); err != nil {
+		return false, err
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -272,7 +280,9 @@ func (s *storageClient) head(urlStr string) (bool, error) {
 		return false, err
 	}
 
-	s.addHeaders(req)
+	if err := s.addHeaders(req); err != nil {
+		return false, err
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -293,11 +303,25 @@ func (s *storageClient) head(urlStr string) (bool, error) {
 	return false, fmt.Errorf("HTTP %d", resp.StatusCode)
 }
 
-func (s *storageClient) addHeaders(req *http.Request) {
+func (s *storageClient) addHeaders(req *http.Request) error {
 	req.Header.Set("User-Agent", "ccache-storage-http-go/"+version)
 
-	if s.bearerToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.bearerToken)
+	bearerToken := s.bearerToken
+	if s.bearerTokenFile != "" {
+		// Read the file for each request so that a rotated token is picked up
+		// without restarting the helper.
+		data, err := os.ReadFile(s.bearerTokenFile)
+		if err != nil {
+			return fmt.Errorf("could not read bearer token file: %w", err)
+		}
+		bearerToken = strings.TrimSpace(string(data))
+		if bearerToken == "" {
+			return fmt.Errorf("bearer token file %q is empty", s.bearerTokenFile)
+		}
+	}
+
+	if bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
 	} else if s.basicAuthUser != "" {
 		req.SetBasicAuth(s.basicAuthUser, s.basicAuthPass)
 	}
@@ -305,4 +329,6 @@ func (s *storageClient) addHeaders(req *http.Request) {
 	for key, value := range s.headers {
 		req.Header.Set(key, value)
 	}
+
+	return nil
 }
