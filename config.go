@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	storagehelper "github.com/ccache/ccache-go-storage-helper"
@@ -57,7 +58,15 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 		case "bearer-token":
 			cfg.BearerToken = value
 		case "bearer-token-file":
-			cfg.BearerTokenFile = value
+			// The helper changes its working directory to the filesystem root
+			// after configuration, so anchor a relative path to the invoker's
+			// working directory now.
+			absPath, err := filepath.Abs(value)
+			if err != nil {
+				cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("error: invalid bearer-token-file path %q: %v", value, err))
+			} else {
+				cfg.BearerTokenFile = absPath
+			}
 		case "header":
 			idx := strings.Index(value, "=")
 			if idx >= 0 {

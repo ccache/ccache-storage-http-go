@@ -676,14 +676,33 @@ func TestIntegrationBearerTokenFileRotation(t *testing.T) {
 		{"GET", "/abcd"}: {status: 200, body: []byte("cache-hit")},
 	})
 
-	tokenFile := filepath.Join(t.TempDir(), "token")
+	// The token file is passed as a path relative to the helper's initial
+	// working directory: the helper changes its own working directory to the
+	// filesystem root after configuration, so this only works if parseConfig
+	// anchors the path to an absolute one first. (A downward relative path is
+	// deliberate — an upward ../ chain can accidentally resolve from the root
+	// as well, since the root's parent is the root.)
+	tokenDir := t.TempDir()
+	tokenFile := filepath.Join(tokenDir, "token")
 	if err := os.WriteFile(tokenFile, []byte("first-token\n"), 0o600); err != nil {
 		t.Fatalf("write token file: %v", err)
 	}
+	origWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(tokenDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origWd); err != nil {
+			t.Fatalf("restore working directory: %v", err)
+		}
+	}()
 
 	h := newHelperProcessWithAttrs(t, server.url(), []helperAttr{
 		{key: "layout", value: "flat"},
-		{key: "bearer-token-file", value: tokenFile},
+		{key: "bearer-token-file", value: "token"},
 	})
 
 	status, _ := h.ipcGet("abcd")
