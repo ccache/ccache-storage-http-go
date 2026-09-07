@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	storagehelper "github.com/ccache/ccache-go-storage-helper"
@@ -22,13 +23,14 @@ const (
 
 type config struct {
 	*storagehelper.Config
-	URL             *url.URL
-	Layout          layout
-	BearerToken     string
-	BearerTokenFile string
-	Headers         map[string]string
-	UseNetrc        bool
-	NetrcFile       string
+	URL                *url.URL
+	Layout             layout
+	BearerToken        string
+	BearerTokenFile    string
+	ConnectionPoolSize int
+	Headers            map[string]string
+	UseNetrc           bool
+	NetrcFile          string
 }
 
 func parseConfig(logger *storagehelper.Logger) (*config, error) {
@@ -72,6 +74,15 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 				} else {
 					cfg.BearerTokenFile = absPath
 				}
+			}
+		case "connection-pool-size":
+			size, err := strconv.Atoi(value)
+			if err != nil {
+				cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("error: invalid connection pool size %q: %v", value, err))
+			} else if size <= 0 {
+				cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("error: invalid connection pool size %q: must be positive", value))
+			} else {
+				cfg.ConnectionPoolSize = size
 			}
 		case "header":
 			idx := strings.Index(value, "=")

@@ -59,7 +59,13 @@ func (b *requestBody) wait() {
 }
 
 func newStorageClient(cfg *config, logger *storagehelper.Logger) (*storageClient, error) {
-	connectionPoolSize := max(32, runtime.GOMAXPROCS(0))
+	var connectionPoolSize int
+	if cfg.ConnectionPoolSize > 0 {
+		connectionPoolSize = cfg.ConnectionPoolSize
+	} else {
+		connectionPoolSize = max(32, runtime.GOMAXPROCS(0))
+	}
+
 	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:        connectionPoolSize,
