@@ -101,6 +101,8 @@ The helper supports the following custom attributes:
 - `@bearer-token-file`: File containing a bearer token for the `Authorization`
   header. The file is read for each request, so the token can be rotated without
   restarting the helper. Cannot be combined with `@bearer-token`.
+- `@connection-pool-size`: Maximum number of connections. Defaults to 32 or
+  `GOMAXPROCS`, whichever is higher.
 - `@header`: Custom HTTP headers (can be specified multiple times).
 - `@use-netrc`: Enable [netrc](https://everything.curl.dev/usingcurl/netrc.html)
   authentication.

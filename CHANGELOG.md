@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Prebuilt linux-s390x binary release.
+- New `connection-pool-size` attribute for setting the maximum number of
+  connections.
 
 ## [0.9] - 2026-08-30
 
