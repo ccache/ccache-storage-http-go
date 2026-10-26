@@ -2,7 +2,7 @@ module github.com/ccache/ccache-storage-http-go
 
 go 1.21
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
