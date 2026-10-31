@@ -27,6 +27,8 @@ production ready) **C++** implementation.
 
 - Supports HTTP and HTTPS
 - High-performance concurrent request handling
+- Streaming of PUT request and GET response payloads (for GET only if the server
+  provides a `Content-Length` header)
 - HTTP keep-alive for efficient connection reuse
 - Cross-platform: Linux, macOS, Windows
 - Multiple layout modes: `flat`, `subdirs`, `bazel`
