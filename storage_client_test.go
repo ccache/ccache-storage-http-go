@@ -315,3 +315,75 @@ func TestStorageClientEmptyBearerTokenFileFailsRequest(t *testing.T) {
 		t.Fatalf("get returned error %q, want empty bearer token file error", err)
 	}
 }
+
+func TestStorageClientPasswordOverridesURL(t *testing.T) {
+	for _, password := range []string{" secret:@ ", ""} {
+		t.Run(password, func(t *testing.T) {
+			baseURL, _ := url.Parse("http://user:old@example.com")
+			client, err := newStorageClient(&config{URL: baseURL, Password: &password}, storagehelper.NewLogger(""))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, _ := http.NewRequest("GET", baseURL.String(), nil)
+			if err := client.addHeaders(req); err != nil {
+				t.Fatal(err)
+			}
+			user, pass, ok := req.BasicAuth()
+			if !ok || user != "user" || pass != password {
+				t.Fatalf("got credentials %q, %q", user, pass)
+			}
+		})
+	}
+}
+
+func TestStorageClientPasswordFileIsReadPerRequest(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "password")
+	baseURL, _ := url.Parse("http://user:old@example.com")
+	client, err := newStorageClient(&config{URL: baseURL, PasswordFile: path}, storagehelper.NewLogger(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tc := range []struct {
+		contents, want string
+		missing        bool
+	}{
+		{" first \r\n", " first ", false},
+		{"second\n", "second", false},
+		{"\n", "", false},
+		{"third\r\n", "third", false},
+		{"nul\x00password", "nul\x00password", false},
+		{"", "", true},
+		{"recovered", "recovered", false},
+		{"two\n\n", "two\n", false},
+		{"bare\r", "bare\r", false},
+	} {
+		if tc.missing {
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			if err := os.WriteFile(path, []byte(tc.contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			mtime := time.Unix(1, 0)
+			if err := os.Chtimes(path, mtime, mtime); err != nil {
+				t.Fatal(err)
+			}
+		}
+		req, _ := http.NewRequest("GET", baseURL.String(), nil)
+		err := client.addHeaders(req)
+		if tc.missing {
+			if err == nil || !strings.Contains(err.Error(), "password file") {
+				t.Fatalf("step %d: want password file error, got %v", i, err)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		user, pass, ok := req.BasicAuth()
+		if !ok || user != "user" || pass != tc.want {
+			t.Fatalf("step %d: got %q, %q; want password %q", i, user, pass, tc.want)
+		}
+	}
+}

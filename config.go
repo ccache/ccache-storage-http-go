@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,6 +32,8 @@ type config struct {
 	Headers            map[string]string
 	UseNetrc           bool
 	NetrcFile          string
+	Password           *string
+	PasswordFile       string
 }
 
 func parseConfig(logger *storagehelper.Logger) (*config, error) {
@@ -52,6 +55,7 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 	cfg.URL = parsedURL
 	logger.Logf("URL: %s", cfg.URL)
 
+	var passwordEnv, passwordFile *string
 	for _, attribute := range cfg.Attributes {
 		key := attribute.Key
 		value := attribute.Value
@@ -75,6 +79,10 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 					cfg.BearerTokenFile = absPath
 				}
 			}
+		case "password-env":
+			passwordEnv = &value
+		case "password-file":
+			passwordFile = &value
 		case "connection-pool-size":
 			size, err := strconv.Atoi(value)
 			if err != nil {
@@ -105,6 +113,25 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 			cfg.UseNetrc = value == "true"
 		default:
 			cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("warning: unknown attribute: %s", key))
+		}
+	}
+
+	if passwordEnv != nil && passwordFile != nil {
+		cfg.Diagnostics = append(cfg.Diagnostics, "error: password-env and password-file cannot be combined")
+	} else if passwordEnv != nil {
+		value, ok := os.LookupEnv(*passwordEnv)
+		if *passwordEnv == "" || !ok {
+			cfg.Diagnostics = append(cfg.Diagnostics, "error: password-env variable is unset or its name is empty")
+		} else {
+			cfg.Password = &value
+		}
+	} else if passwordFile != nil {
+		if *passwordFile == "" {
+			cfg.Diagnostics = append(cfg.Diagnostics, "error: password-file cannot be empty")
+		} else if path, err := filepath.Abs(*passwordFile); err != nil {
+			cfg.Diagnostics = append(cfg.Diagnostics, fmt.Sprintf("error: failed to resolve password-file: %v", err))
+		} else {
+			cfg.PasswordFile = path
 		}
 	}
 

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+
+- New `password-env` and `password-file` attributes for reading passwords from
+  environment variables and files.
+
 ## [0.10.1] - 2026-10-27
 
 [0.10.1]: https://github.com/ccache/ccache-storage-http-go/releases/tag/v0.10.1

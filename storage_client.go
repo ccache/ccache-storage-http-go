@@ -29,6 +29,8 @@ type storageClient struct {
 	headers         map[string]string
 	basicAuthUser   string
 	basicAuthPass   string
+	passwordFile    string
+	password        *string
 	logger          *storagehelper.Logger
 }
 
@@ -85,6 +87,8 @@ func newStorageClient(cfg *config, logger *storagehelper.Logger) (*storageClient
 		bearerTokenFile: cfg.BearerTokenFile,
 		headers:         cfg.Headers,
 		logger:          logger,
+		passwordFile:    cfg.PasswordFile,
+		password:        cfg.Password,
 	}
 
 	if cfg.UseNetrc {
@@ -330,6 +334,29 @@ func (s *storageClient) addHeaders(req *http.Request) error {
 		req.Header.Set("Authorization", "Bearer "+bearerToken)
 	} else if s.basicAuthUser != "" {
 		req.SetBasicAuth(s.basicAuthUser, s.basicAuthPass)
+	}
+
+	password := s.password
+	if s.passwordFile != "" {
+		data, err := os.ReadFile(s.passwordFile)
+		if err != nil {
+			return fmt.Errorf("could not read password file: %w", err)
+		}
+		value := string(data)
+		if strings.HasSuffix(value, "\n") {
+			value = strings.TrimSuffix(value, "\n")
+			value = strings.TrimSuffix(value, "\r")
+		}
+		password = &value
+	}
+	if password != nil {
+		username := s.basicAuthUser
+		if req.URL.User != nil {
+			username = req.URL.User.Username()
+		}
+		if bearerToken == "" {
+			req.SetBasicAuth(username, *password)
+		}
 	}
 
 	for key, value := range s.headers {

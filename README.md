@@ -115,10 +115,23 @@ The helper supports the following custom attributes:
   - `subdirs` (default): First 2 hex chars as subdirectory
   - `flat`: All files in root directory
   - `bazel`: Bazel Remote Execution API compatible layout
+- `@password-env`: Name of an environment variable containing the password for
+  the username in the URL. Read once when the helper starts.
+- `@password-file`: File containing the password for the username in the URL.
+  The file is read for each request, so the password can be
+  rotated without restarting the helper. Cannot be combined with `@password-env`.
 
-Example:
+Both `@password-env` and `@password-file` override a password in the URL.
+
+Examples:
 
 ```bash
+# Password from an environment variable
+export CCACHE_REMOTE_STORAGE="https://user@cache.example.com @password-env=CACHE_PASSWORD"
+
+# Password from a file
+export CCACHE_REMOTE_STORAGE="https://user@cache.example.com @password-file=/path/to/password"
+
 # Custom header
 export CCACHE_REMOTE_STORAGE="https://cache.example.com @header=Content-Type=application/octet-stream"
 
