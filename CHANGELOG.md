@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- New `bearer-token-env` attribute for reading a bearer token from an environment
+  variable.
 - New `password-env` and `password-file` attributes for reading passwords from
   environment variables and files.
 

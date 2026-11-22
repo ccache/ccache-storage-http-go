@@ -55,7 +55,7 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 	cfg.URL = parsedURL
 	logger.Logf("URL: %s", cfg.URL)
 
-	var passwordEnv, passwordFile *string
+	var bearerTokenEnv, passwordEnv, passwordFile *string
 	for _, attribute := range cfg.Attributes {
 		key := attribute.Key
 		value := attribute.Value
@@ -66,6 +66,8 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 				cfg.Diagnostics = append(cfg.Diagnostics, "error: bearer-token cannot be empty")
 			}
 			cfg.BearerToken = value
+		case "bearer-token-env":
+			bearerTokenEnv = &value
 		case "bearer-token-file":
 			if value == "" {
 				cfg.Diagnostics = append(cfg.Diagnostics, "error: bearer-token-file cannot be empty")
@@ -135,7 +137,17 @@ func parseConfig(logger *storagehelper.Logger) (*config, error) {
 		}
 	}
 
-	if cfg.BearerToken != "" && cfg.BearerTokenFile != "" {
+	if bearerTokenEnv != nil {
+		value, ok := os.LookupEnv(*bearerTokenEnv)
+		switch {
+		case cfg.BearerTokenFile != "":
+			cfg.Diagnostics = append(cfg.Diagnostics, "error: bearer-token-env and bearer-token-file cannot be combined")
+		case *bearerTokenEnv == "" || !ok || value == "":
+			cfg.Diagnostics = append(cfg.Diagnostics, "error: bearer-token-env variable is unset, empty or its name is empty")
+		default:
+			cfg.BearerToken = value
+		}
+	} else if cfg.BearerToken != "" && cfg.BearerTokenFile != "" {
 		cfg.Diagnostics = append(cfg.Diagnostics, "warning: bearer-token-file overrides bearer-token")
 	}
 

@@ -100,9 +100,12 @@ See also the [HTTP storage wiki page] for tips on how to set up a storage server
 The helper supports the following custom attributes:
 
 - `@bearer-token`: Bearer token for `Authorization` header.
+- `@bearer-token-env`: Name of an environment variable containing a non-empty
+  bearer token for the `Authorization` header. Read once when the helper starts.
+  Overrides `@bearer-token` and cannot be combined with `@bearer-token-file`.
 - `@bearer-token-file`: File containing a bearer token for the `Authorization`
   header. The file is read for each request, so the token can be rotated without
-  restarting the helper. Cannot be combined with `@bearer-token`.
+  restarting the helper. Overrides `@bearer-token` with a warning.
 - `@connection-pool-size`: Maximum number of connections. Defaults to 32 or
   `GOMAXPROCS`, whichever is higher.
 - `@header`: Custom HTTP headers (can be specified multiple times).
@@ -135,7 +138,10 @@ export CCACHE_REMOTE_STORAGE="https://user@cache.example.com @password-file=/pat
 # Custom header
 export CCACHE_REMOTE_STORAGE="https://cache.example.com @header=Content-Type=application/octet-stream"
 
-# Bearer token file
+# Bearer token from an environment variable
+export CCACHE_REMOTE_STORAGE="https://cache.example.com @bearer-token-env=CACHE_TOKEN"
+
+# Bearer token from a file
 export CCACHE_REMOTE_STORAGE="https://cache.example.com @bearer-token-file=/path/to/token"
 ```
 

@@ -671,6 +671,26 @@ func TestIntegrationPutServerErrorIsReported(t *testing.T) {
 	}
 }
 
+func TestIntegrationBearerTokenEnv(t *testing.T) {
+	t.Setenv("TEST_CACHE_BEARER_TOKEN", "env-token")
+	server := newStubServer(t, map[[2]string]responseSpec{
+		{"GET", "/abcd"}: {status: 200, body: []byte("cache-hit")},
+	})
+	h := newHelperProcessWithAttrs(t, server.url(), []helperAttr{
+		{key: "layout", value: "flat"},
+		{key: "bearer-token-env", value: "TEST_CACHE_BEARER_TOKEN"},
+		{key: "bearer-token", value: "static-token"},
+	})
+
+	if status, _ := h.ipcGet("abcd"); status != responseOK {
+		t.Fatalf("GET status: want %d (OK), got %d", responseOK, status)
+	}
+	reqs := server.requests()
+	if len(reqs) != 1 || reqs[0].authorization != "Bearer env-token" {
+		t.Fatalf("want one request with Authorization %q, got %v", "Bearer env-token", reqs)
+	}
+}
+
 func TestIntegrationBearerTokenFileRotation(t *testing.T) {
 	server := newStubServer(t, map[[2]string]responseSpec{
 		{"GET", "/abcd"}: {status: 200, body: []byte("cache-hit")},
